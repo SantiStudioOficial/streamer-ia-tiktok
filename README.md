@@ -15,7 +15,7 @@ Proyecto del tutorial de **Santi Studio** en YouTube ([@SantiStudioOficial](http
 
 ## Qué hace
 
-| | |
+| Función | Qué hace |
 |---|---|
 | **Regalos** | Agradece cada regalo por su nombre y le responde su siguiente mensaje a quien regaló. |
 | **Seguidores** | Da la bienvenida a quienes te siguen y agrupa a varios en una sola frase. |
