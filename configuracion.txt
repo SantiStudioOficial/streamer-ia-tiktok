@@ -1,0 +1,101 @@
+# =====================================================================
+#  CONFIGURACIÓN DEL STREAMER DE IA
+#  Escribe después del signo = sin comillas. Las líneas con # son notas.
+#  Cada vez que cambies algo, cierra la ventana negra y vuelve a abrir iniciar.
+# =====================================================================
+
+# ---- Modo ----
+# prueba = escribes eventos falsos en la ventana negra (no necesitas estar en vivo)
+# live   = lee los eventos reales de tu live desde TikFinity Desktop
+MODO = prueba
+
+# ---- Inteligencia artificial ----
+# Pega tu key gratuita de Gemini: https://aistudio.google.com  ->  Get API key
+GEMINI_KEY =
+# Modelos gratuitos que se usan en orden con la misma key. Cada uno tiene su
+# propio límite diario: cuando uno se acaba, pasa al siguiente.
+# Revisa tus límites en AI Studio -> Límite de frecuencia -> Todos los modelos.
+GEMINI_MODELOS = gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemma-4-31b-it
+
+# Respaldo opcional (Groq): https://console.groq.com  ->  API Keys
+GROQ_KEY =
+GROQ_MODELO = openai/gpt-oss-120b
+
+# Opcional, solo si tienes buena tarjeta de video y usas LM Studio u Ollama.
+# LM Studio: http://localhost:1234/v1     Ollama: http://localhost:11434/v1
+LOCAL_URL =
+LOCAL_MODELO =
+
+# ---- Voz ----
+# Pega aquí las 3 líneas que te dio DeepSeek. Voces disponibles:
+# es-MX-DaliaNeural (mujer, México)        es-MX-JorgeNeural (hombre, México)
+# es-US-PalomaNeural (mujer, Latinoamérica) es-US-AlonsoNeural (hombre, Latinoamérica)
+# es-ES-XimenaNeural (mujer, España)        es-ES-AlvaroNeural (hombre, España)
+# Velocidad: -15% más lento ... +10% más rápido.  Tono: -10Hz más grave ... +10Hz más agudo.
+VOZ = es-MX-DaliaNeural
+VELOCIDAD = +0%
+TONO = +0Hz
+
+# ---- Qué responde el personaje ----
+# Siempre agradece regalos. Esto es lo opcional:
+AGRADECER_FOLLOWS = si
+RESPONDER_COMENTARIOS_DE_QUIEN_REGALA = si
+
+# ---- Filtros contra groserías y trolls ----
+# Si un comentario o una respuesta incluye alguna de estas palabras, se ignora.
+PALABRAS_PROHIBIDAS = pendej, puta, puto, verga, ching, mierda, culo, pinche, cabron, idiota, estúpid, sexo, droga
+# Palabras extra solo para nombres de usuario (trolls que se ponen nombres feos).
+PALABRAS_PROHIBIDAS_EN_NOMBRES = muerte, mata, matar, kill, asesin, nazi, hitler, viola, suicid, fuck, shit, bitch, porn, nopor, sexy, onlyfans
+# Nombres y apellidos normales que contienen una palabra prohibida (Vergara, Cabrera...)
+PALABRAS_PERMITIDAS_EN_NOMBRES = vergara, cabrera, diputad, computa, matamoros, disputa, reputa
+# Cómo llamará el personaje a alguien con nombre ofensivo
+NOMBRE_GENERICO = amigo
+
+# ---- Animación ----
+# El visor revisa solo hablando.mp4 y usa únicamente las partes donde el personaje se mueve:
+# se salta la calma del inicio, la del final y las pausas a la mitad.
+# Si pones no, usa los dos números de abajo (segundos a saltar al inicio y al final).
+MARGENES_AUTOMATICOS = si
+MARGEN_HABLANDO_INICIO = 0.8
+MARGEN_HABLANDO_FINAL = 0.8
+
+# ---- Textos en pantalla ----
+# Letrero que explica la mecánica. Puedes poner varios mensajes separados por |
+# y se irán turnando cada 7 segundos. Déjalo vacío para no mostrar nada.
+LETRERO = Sígueme y te saludo | Manda un regalo y responderé tu siguiente mensaje
+# Mostrar lo que dice el personaje mientras habla
+SUBTITULOS = si
+# Los subtítulos se van escribiendo letra por letra al ritmo de la voz
+SUBTITULOS_ESCRITURA = si
+# Mientras habla, muestra a quién responde y qué le preguntó
+PANEL_RESPUESTA = si
+# Tarjetas de aviso cuando alguien manda un regalo o te sigue
+AVISOS_EN_PANTALLA = si
+# Altura donde empiezan el letrero y los subtítulos, en porcentaje de la pantalla
+# (0 = arriba, 100 = abajo). Súbelo si tapan la cara; bájalo si chocan con los comentarios.
+POSICION_TEXTOS = 60
+
+# ---- Metas en pantalla ----
+# Qué meta mostrar: monedas, seguidores, ambas o ninguna
+META_TIPO = ambas
+# Meta de monedas (cada regalo suma lo que vale en monedas de TikTok)
+META_MONEDAS = 500
+META_MONEDAS_TITULO = Meta de monedas
+COLOR_META_MONEDAS = #F2A33A
+# Meta de seguidores (cada follow nuevo durante el live suma 1)
+META_SEGUIDORES = 50
+META_SEGUIDORES_TITULO = Meta de seguidores
+COLOR_META_SEGUIDORES = #E0507A
+# Altura de las metas y los avisos en porcentaje de la pantalla (0 = arriba, 100 = abajo).
+# 14 las deja debajo del nombre de tu cuenta, lejos de los comentarios.
+POSICION_META = 14
+
+# ---- Música de fondo ----
+# Pon un archivo llamado musica.mp3 en esta carpeta y sonará en bucle.
+# Usa solo música libre de derechos: las canciones conocidas hacen que TikTok silencie o corte tu live.
+# Volumen de 0 a 100. Baja sola mientras el personaje habla.
+MUSICA_VOLUMEN = 15
+
+# ---- Solución de problemas ----
+# Ponlo en si para ver en la ventana negra todo lo que llega de TikFinity.
+DEPURAR = no

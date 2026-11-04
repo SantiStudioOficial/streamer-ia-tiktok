@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor del personaje</title>
+<style>
+  :root {
+    --fondo: #000;
+    --panel: rgba(15, 17, 16, 0.86);
+    --borde: rgba(243, 244, 240, 0.18);
+    --texto: #F3F4F0;
+    --texto-suave: #C8CDC9;
+    --acento: #4E9F6A;
+    --acento-claro: #A6DD7A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--fondo); overflow: hidden; }
+  body { font-family: "Manrope", "Segoe UI", system-ui, sans-serif; color: var(--texto); }
+
+  /* Escenario: los dos videos apilados */
+  #escenario { position: fixed; inset: 0; }
+  #escenario video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; background: var(--fondo);
+  }
+  #hablando { opacity: 0; transition: opacity 120ms linear; }
+  #escenario.habla #hablando { opacity: 1; }
+
+  /* Letrero y subtítulos, sobre el cuerpo y arriba de la zona de comentarios */
+  #textos {
+    position: fixed; left: 50%; top: 60vh; transform: translateX(-50%);
+    width: min(84vw, 47vh); text-align: center; pointer-events: none;
+  }
+  #letrero {
+    display: inline-block; font-size: 2.1vh; font-weight: 600; line-height: 1.3;
+    color: #fff; background: rgba(0, 0, 0, 0.45); border-radius: 999px;
+    padding: 0.7vh 1.8vh; transition: opacity 200ms linear;
+  }
+  #subtitulo {
+    font-size: 3.1vh; font-weight: 800; line-height: 1.25; color: #fff;
+    text-shadow: 0 0 0.5vh #000, 0 0 0.5vh #000, 0 0.3vh 0.6vh #000;
+    transition: opacity 200ms linear;
+  }
+  #letrero:empty, #subtitulo:empty { display: none; }
+  #textos.habla #letrero, #letrero.cambiando { opacity: 0; }
+
+  /* Barras de meta (monedas, seguidores o ambas) */
+  #superior {
+    position: fixed; left: 50%; top: 14vh; transform: translateX(-50%);
+    width: min(78vw, 40vh); display: flex; flex-direction: column; gap: 0.8vh;
+  }
+  #metas, #avisos { display: flex; flex-direction: column; gap: 0.8vh; }
+
+  /* Avisos de regalos y follows */
+  .aviso {
+    display: flex; align-items: center; gap: 1vh;
+    padding: 0.8vh 1.3vh; background: rgba(0, 0, 0, 0.6); border-radius: 1.4vh;
+    color: #fff; font-size: 1.7vh; font-weight: 700;
+    animation: entrarAviso 300ms ease-out;
+    transition: opacity 400ms linear, transform 400ms ease-in;
+  }
+  .aviso .icono { font-size: 2.1vh; }
+  .aviso.saliendo { opacity: 0; transform: translateY(-0.8vh); }
+  @keyframes entrarAviso { from { opacity: 0; transform: translateY(-0.8vh); } }
+
+  /* Panel de "respondiendo a…" */
+  #contexto {
+    display: none; margin: 0 auto 0.9vh; max-width: 100%; width: fit-content;
+    padding: 0.7vh 1.4vh; background: rgba(0, 0, 0, 0.6); border-radius: 1.2vh;
+    color: #fff; font-size: 1.7vh; line-height: 1.3;
+  }
+  #textos.habla #contexto.visible { display: block; }
+  #contextoTitulo { font-weight: 800; color: #FFD27A; }
+  #contextoDetalle {
+    font-weight: 500; opacity: 0.92;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  #contextoDetalle:empty { display: none; }
+  .por-escribir { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { .aviso { animation: none; } }
+  .meta {
+    padding: 0.9vh 1.4vh 1.1vh; background: rgba(0, 0, 0, 0.5);
+    border-radius: 1.6vh; color: #fff; --color-meta: #F2A33A;
+  }
+  .meta-texto {
+    display: flex; justify-content: space-between; gap: 1vh;
+    font-size: 1.7vh; font-weight: 700; margin-bottom: 0.7vh;
+  }
+  .meta-barra { height: 1.3vh; background: rgba(255, 255, 255, 0.18); border-radius: 999px; overflow: hidden; }
+  .meta-relleno {
+    height: 100%; width: 0; background: var(--color-meta); border-radius: 999px;
+    transition: width 700ms ease-out;
+  }
+  .meta.cumplida { animation: celebrar 900ms ease-in-out 4; }
+  @keyframes celebrar {
+    50% { box-shadow: 0 0 2.5vh var(--color-meta); transform: scale(1.04); }
+  }
+  @media (prefers-reduced-motion: reduce) { .meta.cumplida { animation: none; } }
+
+  /* Panel de prueba (se oculta en el live) */
+  #panel {
+    position: fixed; left: 16px; bottom: 16px; width: min(340px, calc(100% - 32px));
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 18px;
+    padding: 16px 18px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    font-size: 14px; line-height: 1.45;
+  }
+  #panel.oculto { display: none; }
+  #panel h1 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  #panel p { color: var(--texto-suave); margin-bottom: 12px; }
+  #estado { color: var(--acento-claro); font-weight: 600; margin-bottom: 12px; min-height: 1.45em; }
+  .botones { display: flex; gap: 8px; flex-wrap: wrap; }
+  button, label.boton {
+    font: inherit; font-weight: 600; color: var(--texto); cursor: pointer;
+    background: var(--acento); border: none; border-radius: 999px; padding: 8px 14px;
+  }
+  button.secundario { background: transparent; border: 1px solid var(--borde); }
+  button:focus-visible, label.boton:focus-within { outline: 2px solid var(--acento-claro); outline-offset: 2px; }
+  #archivo { position: absolute; opacity: 0; width: 1px; height: 1px; }
+</style>
+</head>
+<body>
+
+<div id="escenario">
+  <video id="reposo" muted loop autoplay playsinline preload="auto"></video>
+  <video id="hablando" muted loop autoplay playsinline preload="auto"></video>
+</div>
+
+<div id="superior"><div id="metas"></div><div id="avisos"></div></div>
+
+<div id="textos">
+  <div id="contexto"><div id="contextoTitulo"></div><div id="contextoDetalle"></div></div>
+  <div id="subtitulo"></div><span id="letrero"></span>
+</div>
+
+<div id="panel">
+  <h1>Visor del personaje</h1>
+  <p>Mantén presionada la barra espaciadora para que hable, o prueba con un audio. La tecla H muestra u oculta este panel.</p>
+  <div id="estado">Cargando videos…</div>
+  <div class="botones">
+    <label class="boton">Probar con un audio<input type="file" id="archivo" accept="audio/*"></label>
+    <button class="secundario" id="ocultar">Ocultar panel</button>
+  </div>
+</div>
+
+<script>
+// ===== Ajustes =====
+const PUERTO_SCRIPT = 8765;   // puerto del script del paso 4
+const UMBRAL_VOZ = 0.015;     // sube este número si la boca se mueve con ruido de fondo
+const ESPERA_SILENCIO = 300;  // milisegundos de silencio antes de cerrar la boca
+let MARGEN_INICIO = 0.8;      // segundos al inicio de hablando.mp4 en calma (se saltan); se cambia en configuracion.txt
+let MARGEN_FINAL = 0.8;       // segundos al final de hablando.mp4 en calma (se saltan); se cambia en configuracion.txt
+
+const escenario = document.getElementById("escenario");
+const reposo = document.getElementById("reposo");
+const hablando = document.getElementById("hablando");
+const panel = document.getElementById("panel");
+const estado = document.getElementById("estado");
+
+// En el live se abre con ?live=1 y el panel no aparece
+if (new URLSearchParams(location.search).has("live")) panel.classList.add("oculto");
+
+function mostrarEstado(texto) { estado.textContent = texto; }
+
+// ===== Videos =====
+// La marca ?v= obliga al navegador a cargar siempre los videos de la carpeta actual,
+// aunque antes haya mostrado otro personaje con los mismos nombres de archivo.
+const marcaCarga = Date.now();
+reposo.src = `reposo.mp4?v=${marcaCarga}`;
+hablando.src = `hablando.mp4?v=${marcaCarga}`;
+let videosListos = 0;
+const faltantes = new Set();
+[reposo, hablando].forEach(v => {
+  v.addEventListener("canplay", () => {
+    videosListos++;
+    if (videosListos === 2) mostrarEstado("Videos listos. Prueba con la barra espaciadora.");
+  }, { once: true });
+  v.addEventListener("error", () => {
+    faltantes.add(`${v.id}.mp4`);
+    mostrarEstado(`No encuentro: ${[...faltantes].join(" y ")}. Deben estar en la misma carpeta que este archivo. Si Windows oculta las extensiones, el nombre real puede ser "${v.id}.mp4.mp4": actívalas en Ver → Mostrar → Extensiones de nombre de archivo.`);
+  });
+});
+
+// ===== Estado de "hablando" =====
+let hablaManual = false;
+let hablaPorAudio = false;
+let bocaAbierta = false;
+
+function actualizarBoca() {
+  const debeHablar = hablaManual || hablaPorAudio;
+  if (debeHablar === bocaAbierta) return;
+  bocaAbierta = debeHablar;
+  if (!debeHablar) { escenario.classList.remove("habla"); return; }
+  if (isNaN(hablando.duration)) { escenario.classList.add("habla"); return; }
+  // Empieza en un punto al azar de alguna de las partes donde sí se mueve
+  const partes = partesConMovimiento();
+  tramoActual = Math.floor(Math.random() * partes.length);
+  const [inicio, fin] = partes[tramoActual];
+  hablando.currentTime = inicio + Math.random() * Math.max(0, fin - inicio - 0.6);
+  hablando.addEventListener("seeked", () => {
+    if (bocaAbierta) escenario.classList.add("habla");
+  }, { once: true });
+}
+
+// ===== Detección automática de las partes con movimiento =====
+// Revisa hablando.mp4 y encuentra en qué partes se mueve el personaje (la boca o, si no tiene,
+// su centro). Mientras habla, el visor solo usa esas partes: se salta la calma del inicio,
+// la del final y las pausas a la mitad, sin que nadie tenga que medir nada.
+let margenesDetectados = false;
+let detectando = false;
+
+async function detectarMargenes() {
+  if (margenesDetectados || detectando) return;
+  detectando = true;
+  try {
+    const muestra = document.createElement("video");
+    muestra.muted = true;
+    muestra.preload = "auto";
+    muestra.src = hablando.src;
+    await new Promise((listo, error) => { muestra.onloadeddata = listo; muestra.onerror = error; });
+    const duracion = muestra.duration;
+    if (!duracion || !isFinite(duracion)) throw new Error("sin duración");
+
+    const ancho = 48, alto = 85, paso = 0.125;
+    const lienzo = document.createElement("canvas");
+    lienzo.width = ancho; lienzo.height = alto;
+    const dibujo = lienzo.getContext("2d", { willReadFrequently: true });
+    const tiempos = [], cuadros = [];
+    const tomarCuadro = (t) => {
+      dibujo.drawImage(muestra, 0, 0, ancho, alto);
+      cuadros.push(dibujo.getImageData(0, 0, ancho, alto).data.slice());
+      tiempos.push(t);
+    };
+
+    if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+      // Rápido: reproduce una copia invisible a 4x y toma una muestra cada 0.125 s del video
+      muestra.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none";
+      document.body.appendChild(muestra);
+      await new Promise((listo) => {
+        let ultimo = -1;
+        const alCuadro = (ahora, datos) => {
+          if (datos.mediaTime - ultimo >= paso) { tomarCuadro(datos.mediaTime); ultimo = datos.mediaTime; }
+          if (!muestra.ended) muestra.requestVideoFrameCallback(alCuadro);
+        };
+        muestra.onended = listo;
+        muestra.requestVideoFrameCallback(alCuadro);
+        muestra.playbackRate = 4;
+        muestra.play().catch(listo);
+      });
+      muestra.remove();
+    } else {
+      // Respaldo: salta por el video cuadro por cuadro (más lento)
+      for (let t = 0.05; t < duracion - 0.05; t += paso) {
+        await new Promise(listo => { muestra.onseeked = listo; muestra.currentTime = t; });
+        tomarCuadro(t);
+      }
+    }
+    if (cuadros.length < 10) throw new Error("pocas muestras");
+
+    // Cuánto cambia la zona central (donde va la cara o el centro del personaje) entre muestras
+    const x0 = Math.floor(ancho * 0.25), x1 = Math.ceil(ancho * 0.75);
+    const y0 = Math.floor(alto * 0.25), y1 = Math.ceil(alto * 0.65);
+    const crudos = [];
+    for (let i = 1; i < cuadros.length; i++) {
+      let suma = 0, n = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const j = (y * ancho + x) * 4 + 1;
+          suma += Math.abs(cuadros[i][j] - cuadros[i - 1][j]);
+          n++;
+        }
+      }
+      crudos.push(suma / n);
+    }
+    // Suavizado para no confundir un parpadeo con hablar
+    const cambios = crudos.map((_, i) => {
+      const vecinos = crudos.slice(Math.max(0, i - 1), i + 2);
+      return vecinos.reduce((a, b) => a + b, 0) / vecinos.length;
+    });
+    const ordenados = [...cambios].sort((a, b) => a - b);
+    const bajo = ordenados[Math.floor(ordenados.length * 0.15)];
+    const altoPercentil = ordenados[Math.floor(ordenados.length * 0.85)];
+    if (altoPercentil - bajo < 0.25) throw new Error("movimiento uniforme");
+    const umbral = bajo + (altoPercentil - bajo) * 0.4;
+
+    // Partes seguidas con movimiento; se unen las que están separadas por menos de 0.3 s
+    let partes = [];
+    let abierta = null;
+    cambios.forEach((c, i) => {
+      const t = tiempos[i + 1];
+      if (c > umbral) { if (abierta === null) abierta = tiempos[i]; }
+      else if (abierta !== null) { partes.push([abierta, t]); abierta = null; }
+    });
+    if (abierta !== null) partes.push([abierta, tiempos[tiempos.length - 1]]);
+    partes = partes.reduce((unidas, parte) => {
+      const ultima = unidas[unidas.length - 1];
+      if (ultima && parte[0] - ultima[1] < 0.3) ultima[1] = parte[1];
+      else unidas.push(parte);
+      return unidas;
+    }, []).filter(([ini, fin]) => fin - ini >= 0.5);
+
+    const total = partes.reduce((suma, [ini, fin]) => suma + fin - ini, 0);
+    if (!partes.length) throw new Error("sin movimiento");
+    segmentos = partes.map(([ini, fin]) => [ini + 0.05, fin - 0.05]);
+    MARGEN_INICIO = segmentos[0][0];
+    MARGEN_FINAL = duracion - segmentos[segmentos.length - 1][1];
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ tipo: "segmentos", partes: segmentos, total, duracion }));
+    }
+    margenesDetectados = true;
+  } catch (error) {
+    // Si no se puede analizar (por ejemplo, al abrir el archivo directo), se usan los de configuracion.txt
+  } finally {
+    detectando = false;
+  }
+}
+
+// Cuando llega al tramo final de boca cerrada, regresa al inicio de la parte útil
+// Partes del video de hablando que se usan: las detectadas o, si no hay, la definida por los márgenes
+let segmentos = [];
+let tramoActual = 0;
+function partesConMovimiento() {
+  if (segmentos.length) return segmentos;
+  const duracion = hablando.duration || 6;
+  return [[MARGEN_INICIO, Math.max(MARGEN_INICIO + 0.5, duracion - MARGEN_FINAL)]];
+}
+
+// Al terminar una parte con movimiento, salta a la siguiente (y de la última, a la primera)
+function vigilarHablando() {
+  if (!isNaN(hablando.duration)) {
+    const partes = partesConMovimiento();
+    if (tramoActual >= partes.length) tramoActual = 0;
+    const [inicio, fin] = partes[tramoActual];
+    if (hablando.currentTime >= fin || hablando.currentTime < inicio - 0.3) {
+      tramoActual = (tramoActual + 1) % partes.length;
+      hablando.currentTime = partes[tramoActual][0];
+    }
+  }
+  requestAnimationFrame(vigilarHablando);
+}
+vigilarHablando();
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" && !e.repeat) { e.preventDefault(); hablaManual = true; actualizarBoca(); }
+  if (e.key === "h" || e.key === "H") panel.classList.toggle("oculto");
+});
+document.addEventListener("keyup", e => {
+  if (e.code === "Space") { hablaManual = false; actualizarBoca(); }
+});
+document.getElementById("ocultar").addEventListener("click", () => panel.classList.add("oculto"));
+
+// ===== Audio: mide el volumen para abrir y cerrar la boca =====
+const voz = new Audio();
+voz.crossOrigin = "anonymous";
+let contexto, analizador, datos, ultimoSonido = 0;
+
+function prepararAudio() {
+  if (contexto) return;
+  contexto = new (window.AudioContext || window.webkitAudioContext)();
+  const fuente = contexto.createMediaElementSource(voz);
+  analizador = contexto.createAnalyser();
+  analizador.fftSize = 1024;
+  datos = new Float32Array(analizador.fftSize);
+  fuente.connect(analizador);
+  analizador.connect(contexto.destination);
+  medirVolumen();
+}
+
+function medirVolumen() {
+  analizador.getFloatTimeDomainData(datos);
+  let suma = 0;
+  for (let i = 0; i < datos.length; i++) suma += datos[i] * datos[i];
+  const volumen = Math.sqrt(suma / datos.length);
+  const ahora = performance.now();
+  if (!voz.paused && volumen > UMBRAL_VOZ) ultimoSonido = ahora;
+  const debeHablar = ahora - ultimoSonido < ESPERA_SILENCIO;
+  if (debeHablar !== hablaPorAudio) { hablaPorAudio = debeHablar; actualizarBoca(); }
+  requestAnimationFrame(medirVolumen);
+}
+
+async function reproducir(url) {
+  prepararAudio();
+  if (contexto.state === "suspended") await contexto.resume().catch(() => {});
+  voz.src = url;
+  try {
+    await voz.play();
+    if (contexto.state === "suspended") throw new Error("audio bloqueado");
+  } catch {
+    voz.pause();
+    limpiarSubtitulos();
+    panel.classList.remove("oculto");
+    mostrarEstado("El navegador bloqueó el sonido. Haz clic una vez en esta página para activarlo.");
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ tipo: "bloqueado" }));
+    avisarTermine();
+  }
+}
+// Un clic o una tecla en la página desbloquea el sonido en navegadores normales
+function desbloquearSonido() {
+  prepararAudio();
+  iniciarMusica();
+  if (contexto.state === "suspended") contexto.resume();
+  if (estado.textContent.includes("bloqueó el sonido") || estado.textContent.includes("activar el sonido")) {
+    mostrarEstado("Sonido activado.");
+  }
+}
+document.addEventListener("click", desbloquearSonido);
+document.addEventListener("keydown", desbloquearSonido);
+
+document.getElementById("archivo").addEventListener("change", e => {
+  const archivo = e.target.files[0];
+  if (!archivo) return;
+  mostrarEstado(`Reproduciendo: ${archivo.name}`);
+  reproducir(URL.createObjectURL(archivo));
+});
+
+// ===== Conexión con el script del paso 4 (si no está abierto, no pasa nada) =====
+let socket;
+const URL_SCRIPT = location.protocol.startsWith("http")
+  ? `ws://${location.host}/ws`
+  : `ws://localhost:${PUERTO_SCRIPT}/ws`;
+function conectarScript() {
+  try { socket = new WebSocket(URL_SCRIPT); }
+  catch { return setTimeout(conectarScript, 3000); }
+  socket.onopen = () => {
+    const bloqueado = !contexto || contexto.state !== "running";
+    mostrarEstado(bloqueado
+      ? "Conectado al script. Haz clic una vez en esta página para activar el sonido."
+      : "Conectado al script. Esperando mensajes del live…");
+  };
+  socket.onmessage = e => {
+    const mensaje = JSON.parse(e.data);
+    if (mensaje.tipo === "config") {
+      iniciarLetreros(mensaje.letrero || "");
+      if (mensaje.posicion) textos.style.top = mensaje.posicion + "vh";
+      prepararMetas(mensaje.metas || []);
+      if (!margenesDetectados) {
+        if (typeof mensaje.margen_inicio === "number") MARGEN_INICIO = mensaje.margen_inicio;
+        if (typeof mensaje.margen_final === "number") MARGEN_FINAL = mensaje.margen_final;
+      }
+      if (mensaje.margenes_auto !== false) detectarMargenes();
+      if (mensaje.meta_posicion) superior.style.top = mensaje.meta_posicion + "vh";
+      usarEscritura = mensaje.escritura !== false;
+      volumenMusica = (mensaje.musica ?? 0) / 100;
+      if (volumenMusica > 0) iniciarMusica(); else musica.pause();
+      usarSubtitulos = mensaje.subtitulos !== false;
+    }
+    if (mensaje.tipo === "meta") actualizarMeta(mensaje);
+    if (mensaje.tipo === "aviso") mostrarAviso(mensaje.icono, mensaje.texto);
+    if (mensaje.tipo === "hablar") {
+      prepararContexto(mensaje.contexto);
+      prepararSubtitulos(mensaje.texto || "");
+      reproducir(mensaje.audio);
+    }
+  };
+  socket.onclose = () => setTimeout(conectarScript, 3000);
+}
+// ===== Letrero: varios mensajes separados por | se turnan cada pocos segundos =====
+const SEGUNDOS_POR_LETRERO = 7;
+let letreros = [];
+let letreroActual = 0;
+let cicloLetreros;
+
+function iniciarLetreros(texto) {
+  letreros = texto.split("|").map(t => t.trim()).filter(Boolean);
+  letreroActual = 0;
+  letrero.textContent = letreros[0] || "";
+  clearInterval(cicloLetreros);
+  if (letreros.length > 1) cicloLetreros = setInterval(siguienteLetrero, SEGUNDOS_POR_LETRERO * 1000);
+}
+function siguienteLetrero() {
+  letrero.classList.add("cambiando");
+  setTimeout(() => {
+    letreroActual = (letreroActual + 1) % letreros.length;
+    letrero.textContent = letreros[letreroActual];
+    letrero.classList.remove("cambiando");
+  }, 250);
+}
+
+// ===== Avisos de regalos y follows: tarjetas que duran unos segundos =====
+const superior = document.getElementById("superior");
+const avisos = document.getElementById("avisos");
+const MAXIMO_AVISOS = 3;
+const SEGUNDOS_AVISO = 5;
+
+function mostrarAviso(icono, texto) {
+  const tarjeta = document.createElement("div");
+  tarjeta.className = "aviso";
+  const simbolo = document.createElement("span");
+  simbolo.className = "icono";
+  simbolo.textContent = icono || "✨";
+  const mensaje = document.createElement("span");
+  mensaje.textContent = texto || "";
+  tarjeta.append(simbolo, mensaje);
+  avisos.appendChild(tarjeta);
+  while (avisos.children.length > MAXIMO_AVISOS) avisos.firstElementChild.remove();
+  setTimeout(() => {
+    tarjeta.classList.add("saliendo");
+    setTimeout(() => tarjeta.remove(), 450);
+  }, SEGUNDOS_AVISO * 1000);
+}
+
+// ===== Barras de meta: una por cada meta activa =====
+const contenedorMetas = document.getElementById("metas");
+const barras = {};
+
+function prepararMetas(lista) {
+  contenedorMetas.innerHTML = "";
+  for (const k in barras) delete barras[k];
+  for (const { clave, titulo, color } of lista) {
+    const caja = document.createElement("div");
+    caja.className = "meta";
+    caja.style.setProperty("--color-meta", color);
+    caja.innerHTML = '<div class="meta-texto"><span class="meta-titulo"></span><span class="meta-numeros"></span></div>'
+      + '<div class="meta-barra"><div class="meta-relleno"></div></div>';
+    caja.querySelector(".meta-titulo").textContent = titulo;
+    contenedorMetas.appendChild(caja);
+    barras[clave] = {
+      caja,
+      numeros: caja.querySelector(".meta-numeros"),
+      relleno: caja.querySelector(".meta-relleno"),
+      ultima: null,
+      fin: null,
+    };
+  }
+}
+
+function actualizarMeta({ clave, progreso, meta, cumplida }) {
+  const b = barras[clave];
+  if (!b) return;
+  b.ultima = { clave, progreso, meta, cumplida: false };
+  if (cumplida) {
+    // Llena la barra, celebra unos segundos y luego muestra el nuevo avance
+    b.relleno.style.width = "100%";
+    b.numeros.textContent = "¡Meta cumplida!";
+    b.caja.classList.remove("cumplida");
+    void b.caja.offsetWidth;
+    b.caja.classList.add("cumplida");
+    clearTimeout(b.fin);
+    b.fin = setTimeout(() => {
+      b.caja.classList.remove("cumplida");
+      actualizarMeta(b.ultima);
+    }, 4000);
+    return;
+  }
+  if (b.caja.classList.contains("cumplida")) return;
+  b.relleno.style.width = Math.min(100, (progreso / meta) * 100) + "%";
+  b.numeros.textContent = `${progreso.toLocaleString("es-MX")} / ${meta.toLocaleString("es-MX")}`;
+}
+
+// ===== Música de fondo (opcional): musica.mp3 en la misma carpeta =====
+const musica = new Audio("musica.mp3");
+musica.loop = true;
+let volumenMusica = 0;
+let musicaDisponible = true;
+let rampa;
+musica.addEventListener("error", () => { musicaDisponible = false; });
+
+function iniciarMusica() {
+  if (!musicaDisponible || volumenMusica <= 0 || !musica.paused) return;
+  musica.volume = volumenMusica;
+  musica.play().catch(() => {});
+}
+// Baja la música mientras habla el personaje y la sube al terminar
+function moverVolumen(destino) {
+  clearInterval(rampa);
+  rampa = setInterval(() => {
+    const paso = (destino - musica.volume) * 0.25;
+    if (Math.abs(paso) < 0.002) { musica.volume = destino; clearInterval(rampa); return; }
+    musica.volume = Math.min(1, Math.max(0, musica.volume + paso));
+  }, 40);
+}
+voz.addEventListener("play", () => moverVolumen(volumenMusica * 0.3));
+voz.addEventListener("ended", () => moverVolumen(volumenMusica));
+voz.addEventListener("pause", () => moverVolumen(volumenMusica));
+
+// ===== Subtítulos: muestra la frase que va diciendo, según el avance del audio =====
+const textos = document.getElementById("textos");
+const letrero = document.getElementById("letrero");
+const subtitulo = document.getElementById("subtitulo");
+const panelContexto = document.getElementById("contexto");
+const contextoTitulo = document.getElementById("contextoTitulo");
+const contextoDetalle = document.getElementById("contextoDetalle");
+let usarSubtitulos = true;
+let usarEscritura = true;
+let frases = [];
+let cortes = [];
+
+function prepararContexto(datos) {
+  contextoTitulo.textContent = datos?.titulo || "";
+  contextoDetalle.textContent = datos?.detalle || "";
+  panelContexto.classList.toggle("visible", Boolean(datos?.titulo));
+}
+
+function prepararSubtitulos(texto) {
+  frases = usarSubtitulos ? (texto.match(/[^.!?]+[.!?]*/g) || []).map(f => f.trim()).filter(Boolean) : [];
+  const total = frases.reduce((suma, f) => suma + f.length, 0) || 1;
+  let acumulado = 0;
+  cortes = frases.map(f => (acumulado += f.length) / total);
+  pintarFrase(0, usarEscritura ? 0 : 1);
+  textos.classList.toggle("habla", frases.length > 0 || panelContexto.classList.contains("visible"));
+}
+
+// Escribe la frase actual hasta la proporción indicada; el resto queda invisible para que no salte el texto
+function pintarFrase(i, proporcion) {
+  const frase = frases[i] || "";
+  const visibles = Math.ceil(frase.length * Math.min(1, Math.max(0, proporcion)));
+  const escrito = document.createElement("span");
+  escrito.textContent = frase.slice(0, visibles);
+  const pendiente = document.createElement("span");
+  pendiente.className = "por-escribir";
+  pendiente.textContent = frase.slice(visibles);
+  subtitulo.replaceChildren(escrito, pendiente);
+}
+
+function seguirSubtitulos() {
+  if (voz.paused || !frases.length) return;
+  if (voz.duration) {
+    const avance = voz.currentTime / voz.duration;
+    let i = cortes.findIndex(c => avance <= c);
+    if (i === -1) i = frases.length - 1;
+    const inicio = i === 0 ? 0 : cortes[i - 1];
+    const proporcion = usarEscritura ? (avance - inicio) / (cortes[i] - inicio) * 1.15 : 1;
+    pintarFrase(i, proporcion);
+  }
+  requestAnimationFrame(seguirSubtitulos);
+}
+voz.addEventListener("play", () => requestAnimationFrame(seguirSubtitulos));
+
+function limpiarSubtitulos() {
+  frases = [];
+  subtitulo.replaceChildren();
+  prepararContexto(null);
+  textos.classList.remove("habla");
+}
+voz.addEventListener("ended", limpiarSubtitulos);
+
+function avisarTermine() {
+  if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ tipo: "termine" }));
+}
+voz.addEventListener("ended", avisarTermine);
+conectarScript();
+</script>
+</body>
+</html>
