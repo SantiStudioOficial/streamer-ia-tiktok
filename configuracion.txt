@@ -15,7 +15,7 @@ GEMINI_KEY =
 # Modelos gratuitos que se usan en orden con la misma key. Cada uno tiene su
 # propio límite diario: cuando uno se acaba, pasa al siguiente.
 # Revisa tus límites en AI Studio -> Límite de frecuencia -> Todos los modelos.
-GEMINI_MODELOS = gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemma-4-31b-it
+GEMINI_MODELOS = gemini-3.1-flash-lite, gemini-3.5-flash-lite, gemma-4-31b-it
 
 # Respaldo opcional (Groq): https://console.groq.com  ->  API Keys
 GROQ_KEY =

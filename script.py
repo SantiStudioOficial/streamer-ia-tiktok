@@ -204,7 +204,7 @@ if CONF.get("LOCAL_URL"):
 if CONF.get("GEMINI_KEY"):
     # Cada modelo de Google tiene su propio límite diario, así que se usan en cadena
     modelos = CONF.get("GEMINI_MODELOS") or CONF.get("GEMINI_MODELO") or \
-        "gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemma-4-31b-it"
+        "gemini-3.1-flash-lite, gemini-3.5-flash-lite, gemma-4-31b-it"
     for modelo in [m.strip() for m in modelos.split(",") if m.strip()]:
         PROVEEDORES.append({"nombre": f"Google {modelo}",
                             "url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
@@ -510,6 +510,19 @@ def construir_mensajes(lote):
     return [{"role": "system", "content": sistema}, {"role": "user", "content": usuario}]
 
 
+class RespuestaGuardada:
+    """Respuesta ya leída, con la misma forma que usa preguntar_ia (status, text, json)."""
+    def __init__(self, status, contenido):
+        self.status = status
+        self._contenido = contenido
+
+    async def text(self):
+        return self._contenido.decode("utf-8", errors="replace")
+
+    async def json(self):
+        return json.loads(self._contenido)
+
+
 def poner_en_pausa(p, motivo):
     """Pausa creciente para un modelo que falla: 20 s, 40 s, 80 s... hasta 5 minutos."""
     p["fallos_seguidos"] += 1
@@ -523,12 +536,27 @@ async def preguntar_ia(sesion, mensajes):
         if p["descanso_hasta"] > time.time():
             continue
         cuerpo = {"model": p["modelo"], "messages": mensajes, "max_tokens": 1024, "temperature": 0.9}
-        if "gpt-oss" in p["modelo"]:
+        # Razonamiento bajo: para saludar o agradecer no hace falta "pensar" mucho, y responde más rápido.
+        # Si un modelo no acepta el parámetro, se recuerda y se reintenta sin él.
+        usa_razonamiento = not p.get("sin_razonamiento") and (
+            "gpt-oss" in p["modelo"] or p["modelo"].startswith("gemini"))
+        if usa_razonamiento:
             cuerpo["reasoning_effort"] = "low"
         try:
             async with sesion.post(p["url"], json=cuerpo,
                                    headers={"Authorization": f"Bearer {p['key']}"},
-                                   timeout=aiohttp.ClientTimeout(total=6)) as r:
+                                   timeout=aiohttp.ClientTimeout(total=8)) as r:
+                if r.status == 400 and usa_razonamiento:
+                    p["sin_razonamiento"] = True
+                    if DEPURAR:
+                        print(f"  {p['nombre']} no acepta reasoning_effort; se reintentará sin él.")
+                    cuerpo.pop("reasoning_effort", None)
+                    async with sesion.post(p["url"], json=cuerpo,
+                                           headers={"Authorization": f"Bearer {p['key']}"},
+                                           timeout=aiohttp.ClientTimeout(total=8)) as r2:
+                        r = r2
+                        estado, datos_r2 = r2.status, (await r2.read())
+                    r = RespuestaGuardada(estado, datos_r2)
                 if r.status == 429:
                     p["fallos_seguidos"] += 1
                     espera = 1800 if p["fallos_seguidos"] >= 3 else 60
