@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.youtube.com/@SantiStudioOficial"><img src="https://img.shields.io/badge/Ver_el_tutorial-YouTube-2E5A43?style=for-the-badge&logo=youtube&logoColor=F3F4F0&labelColor=132019" alt="Ver el tutorial en YouTube"></a>
+  <a href="https://youtu.be/KtRWbPz1fiU"><img src="https://img.shields.io/badge/Ver_el_tutorial-YouTube-2E5A43?style=for-the-badge&logo=youtube&logoColor=F3F4F0&labelColor=132019" alt="Ver el tutorial en YouTube"></a>
   <img src="https://img.shields.io/badge/Windows-2E5A43?style=for-the-badge&logo=windows&logoColor=F3F4F0&labelColor=132019" alt="Windows">
   <img src="https://img.shields.io/badge/Python-3.10+-2E5A43?style=for-the-badge&logo=python&logoColor=F3F4F0&labelColor=132019" alt="Python 3.10 o más nuevo">
   <img src="https://img.shields.io/badge/Herramientas-Gratuitas-2E5A43?style=for-the-badge&labelColor=132019" alt="Herramientas gratuitas">
